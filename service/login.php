@@ -20,14 +20,13 @@ if ($senha == "") {
     exit();
 }
 
-$query = $pdo->prepare("SELECT * FROM usuarios WHERE email = :email and senha = :senha");
+$query = $pdo->prepare("SELECT * FROM usuarios WHERE email = :email");
 $query->bindValue(":email", $email);
-$query->bindValue(":senha", $senha);
 $query->execute();
 
 $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
-if (@count($res) > 0) {
+if (@count($res) > 0 && password_verify($senha, $res[0]['senha'])) {
     if ($res[0]['situacao'] == "BLOQUEADO") {
         $result = json_encode(array('mensagem' => 'Este usuário está bloqueado.', 'sucesso'=> false));
         echo $result;

@@ -49,7 +49,7 @@ if ($requisicao == 'incluir') {
     $res = $pdo->prepare("INSERT INTO usuarios SET nome = :nome, email = :email, senha = :senha, nivel = :nivel, situacao = :situacao");
     $res->bindValue(":nome", $nome);
     $res->bindValue(":email", $email);
-     $res->bindValue(":senha", $senha);
+     $res->bindValue(":senha", password_hash($senha, PASSWORD_DEFAULT));
     $res->bindValue(":nivel", $nivel);
     $res->bindValue(":situacao", $situacao);
     $res->execute();

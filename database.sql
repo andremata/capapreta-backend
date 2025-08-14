@@ -33,7 +33,7 @@ CREATE TABLE `capapreta`.`usuarios` (
   `id` INT NOT NULL,
   `nome` VARCHAR(100) NULL,
   `email` VARCHAR(200) NULL,
-  `senha` VARCHAR(45) NULL,
+  `senha` VARCHAR(255) NULL,
   `nivel` VARCHAR(45) NULL,
   `situacao` VARCHAR(45) NULL,
   PRIMARY KEY (`id`));
@@ -41,4 +41,4 @@ CREATE TABLE `capapreta`.`usuarios` (
 ALTER TABLE `capapreta`.`usuarios` 
 CHANGE COLUMN `id` `id` INT NOT NULL AUTO_INCREMENT ;
   
-insert into capapreta.usuarios (id, nome, email, senha, nivel, situacao) values (0, 'ADMINISTRADOR', 'admin@admin.com', '123', 'ADMINISTRADOR', 'ATIVO');
+insert into capapreta.usuarios (id, nome, email, senha, nivel, situacao) values (0, 'ADMINISTRADOR', 'admin@admin.com', '$2y$10$s7DH5SWRgzBtF30qR2j0rOqV5UMhgcEcLXDM3mLsXyLyZvY7Qo9by', 'ADMINISTRADOR', 'ATIVO'); -- senha: admin123

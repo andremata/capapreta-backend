@@ -43,7 +43,7 @@ if ($requisicao == 'incluir') {
     $res = $pdo->prepare("INSERT INTO usuarios SET nome = :nome, email = :email, senha = :senha, nivel = :nivel, situacao = :situacao");
     $res->bindValue(":nome", $nome);
     $res->bindValue(":email", $email);
-    $res->bindValue(":senha", $senha);
+    $res->bindValue(":senha", password_hash($senha, PASSWORD_DEFAULT));
     $res->bindValue(":nivel", $nivel);
     $res->bindValue(":situacao", $situacao);
     $res->execute();
@@ -89,7 +89,7 @@ if ($requisicao == 'alterar') {
     
     $res->bindValue(":nome", $nome);
     $res->bindValue(":email", $email);
-    $res->bindValue(":senha", $senha);
+    $res->bindValue(":senha", password_hash($senha, PASSWORD_DEFAULT));
     $res->bindValue(":id", $id_alvo);
     $res->execute();
 
@@ -165,7 +165,7 @@ if ($requisicao == 'alterar_senha') {
     }
 
     $res = $pdo->prepare("UPDATE usuarios SET senha = :senha WHERE id = :id");
-    $res->bindValue(":senha", $senha);
+    $res->bindValue(":senha", password_hash($senha, PASSWORD_DEFAULT));
     $res->bindValue(":id", $id_usuario_logado);
     $res->execute();
 
