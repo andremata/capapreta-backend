@@ -5,17 +5,16 @@ require_once('../conexao.php');
 $postjson = json_decode(file_get_contents('php://input'), true);
 
 $requisicao = $postjson['requisicao'];
-
 $mensagem = "";
+
+// Use the user ID from the decoded JWT token
+$id_usuario_logado = $dados_usuario_token->id;
 
 if ($requisicao == 'incluir') {
     $descricao     = $postjson['descricao'];
     $dataconclusao = $postjson['dataConclusao'];
     $situacao      = $postjson['situacao'];
-    $usuarioid     = $postjson['usuarioid'];
     $prioridade    = $postjson['prioridade'];
-
-    //$dataconclusao = date('Y-m-d', strtotime($data));
 
     if (!is_string($descricao) || $descricao == "") {
         $result = json_encode(array('mensagem'=>'Campo Objetivo não preenchido!', 'sucesso'=> false));
@@ -37,13 +36,12 @@ if ($requisicao == 'incluir') {
 
     $query = $pdo->prepare("SELECT * FROM objetivos WHERE descricao = :descricao AND usuarioid = :usuarioid");
     $query->bindValue(":descricao", $descricao);
-    $query->bindValue(":usuarioid", $usuarioid);
+    $query->bindValue(":usuarioid", $id_usuario_logado);
     $query->execute();
-
     $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
     if (@count($res) > 0) {
-        $result = json_encode(array('mensagem'=>'Já existe uma objetivo com este nome!', 'sucesso'=> false));
+        $result = json_encode(array('mensagem'=>'Já existe um objetivo com este nome!', 'sucesso'=> false));
         echo $result;
         exit();
     }
@@ -53,7 +51,7 @@ if ($requisicao == 'incluir') {
     $res->bindValue(":dataconclusao", $dataconclusao);
     $res->bindValue(":prioridade", $prioridade);
     $res->bindValue(":situacao", $situacao);
-    $res->bindValue(":usuarioid", $usuarioid);
+    $res->bindValue(":usuarioid", $id_usuario_logado);
     $res->execute();
 
     $mensagem = "Salvo com sucesso!";
@@ -65,7 +63,6 @@ if ($requisicao == 'alterar') {
     $dataconclusao = $postjson['dataConclusao'];
     $prioridade    = $postjson['prioridade'];
     $situacao      = $postjson['situacao'];
-    $usuarioid     = $postjson['usuarioid'];
 
     if (!is_string($descricao) || $descricao == "") {
         $result = json_encode(array('mensagem'=>'Campo Objetivo não preenchido!', 'sucesso'=> false));
@@ -88,119 +85,126 @@ if ($requisicao == 'alterar') {
     $query = $pdo->prepare("SELECT * FROM objetivos WHERE descricao = :descricao AND id <> :id AND usuarioid = :usuarioid");
     $query->bindValue(":descricao", $descricao);
     $query->bindValue(":id", $id);
-    $query->bindValue(":usuarioid", $usuarioid);
+    $query->bindValue(":usuarioid", $id_usuario_logado);
     $query->execute();
-
     $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
     if (@count($res) > 0) {
-        $result = json_encode(array('mensagem'=>'Já existe uma objetivo com este nome!', 'sucesso'=> false));
+        $result = json_encode(array('mensagem'=>'Já existe um objetivo com este nome!', 'sucesso'=> false));
         echo $result;
         exit();
     }
 
-    $res = $pdo->prepare("UPDATE objetivos SET descricao = :descricao, dataconclusao = :dataconclusao, prioridade = :prioridade, situacao = :situacao WHERE id = :id");
+    // Security Fix: Ensure user can only update their own objectives
+    $res = $pdo->prepare("UPDATE objetivos SET descricao = :descricao, dataconclusao = :dataconclusao, prioridade = :prioridade, situacao = :situacao WHERE id = :id AND usuarioid = :usuarioid");
     $res->bindValue(":descricao", $descricao);
     $res->bindValue(":dataconclusao", $dataconclusao);
     $res->bindValue(":prioridade", $prioridade);
-    $res->bindValue(":situacao", $situacao);
+    $res->bindValue(":situacao", "ABERTO");
     $res->bindValue(":id", $id);
+    $res->bindValue(":usuarioid", $id_usuario_logado);
     $res->execute();
 
-    $mensagem = "Alterado com sucesso!";
+    if($res->rowCount() > 0){
+        $mensagem = "Alterado com sucesso!";
+    } else {
+        $mensagem = "O objetivo não foi encontrado ou você não tem permissão para alterá-lo.";
+    }
 }
 
 if ($requisicao == 'excluir') {
     $id = $postjson['id'];
-    $usuarioid = $postjson['usuarioid'];
 
-    $query = $pdo->prepare("SELECT * FROM objetivos WHERE id = :id AND usuarioid = :usuarioid");
+    // Security Fix: Use prepared statements and check ownership before deleting
+    $query = $pdo->prepare("SELECT situacao FROM objetivos WHERE id = :id AND usuarioid = :usuarioid");
     $query->bindValue(":id", $id);
-    $query->bindValue(":usuarioid", $usuarioid);
+    $query->bindValue(":usuarioid", $id_usuario_logado);
     $query->execute();
+    $res = $query->fetch(PDO::FETCH_ASSOC);
 
-    $res = $query->fetchAll(PDO::FETCH_ASSOC);
-
-    if (@count($res) > 0 && $res['situacao'] == 'CONCLUIDO') {
-        $result = json_encode(array('mensagem'=>'Este objetivo não pode ser excluído!', 'sucesso'=> false));
+    if (!$res) {
+        $result = json_encode(array('mensagem'=>'Objetivo não encontrado ou você não tem permissão para excluí-lo.', 'sucesso'=> false));
         echo $result;
         exit();
     }
 
-    $res = $pdo->query("DELETE FROM objetivos WHERE id = '$id'");
+    if ($res['situacao'] == 'CONCLUIDO') {
+        $result = json_encode(array('mensagem'=>'Este objetivo já foi concluído e não pode ser excluído!', 'sucesso'=> false));
+        echo $result;
+        exit();
+    }
 
-    $mensagem = "Excluido com sucesso!";
+    $res = $pdo->prepare("DELETE FROM objetivos WHERE id = :id AND usuarioid = :usuarioid");
+    $res->bindValue(":id", $id);
+    $res->bindValue(":usuarioid", $id_usuario_logado);
+    $res->execute();
+
+    $mensagem = "Excluído com sucesso!";
 }
 
 if ($requisicao == 'consultar') {
     $condicao = "%". $postjson['descricao'] ."%";
-    $usuarioid = $postjson['usuarioid'];
+    $start = (int) $postjson['start'];
+    $limit = (int) $postjson['limit'];
     
-    $query = $pdo->query("SELECT * FROM objetivos WHERE descricao LIKE '$condicao' AND usuarioid = $usuarioid ORDER BY id DESC LIMIT $postjson[start], $postjson[limit]");
+    // Security fix: Use prepared statements to prevent SQL injection
+    $query = $pdo->prepare("SELECT * FROM objetivos WHERE descricao LIKE :condicao AND usuarioid = :usuarioid ORDER BY id DESC LIMIT :start, :limit");
+    $query->bindValue(":condicao", $condicao);
+    $query->bindValue(":usuarioid", $id_usuario_logado);
+    $query->bindValue(":start", $start, PDO::PARAM_INT);
+    $query->bindValue(":limit", $limit, PDO::PARAM_INT);
+    $query->execute();
 
     $res = $query->fetchAll(PDO::FETCH_ASSOC);
     $total = @count($res);
 
-    if (@count($res) <= 0) {
+    if ($total <= 0) {
         $result = json_encode(array('mensagem'=>'Nenhum objetivo encontrado!', 'sucesso'=> false));
         echo $result;
         exit();
     }
 
-    if ($total > 0) {
-        for($i=0; $i<$total; $i++){
-            foreach ($res[$i] as $key => $value){}
-
-            $dados[] = array(
-                'id'            => $res[$i]['id'],
-                'descricao'     => $res[$i]['descricao'],
-                'dataConclusao' => $res[$i]['dataconclusao'],
-                'situacao'      => $res[$i]['situacao'],
-                'prioridade'    => $res[$i]['prioridade'],
-            );
-        }
-
-        $result = json_encode(array('sucesso'=> true, 'objetivos'=>$dados));
-        
-    } else {
-        $result = json_encode(array('sucesso'=> false, 'objetivos'=>'0'));
+    $dados = [];
+    foreach ($res as $item) {
+        $dados[] = array(
+            'id'            => $item['id'],
+            'descricao'     => $item['descricao'],
+            'dataConclusao' => $item['dataconclusao'],
+            'situacao'      => $item['situacao'],
+            'prioridade'    => $item['prioridade'],
+        );
     }
 
+    $result = json_encode(array('sucesso'=> true, 'objetivos'=>$dados));
     echo $result;
     exit();
 }
 
 if ($requisicao == 'mass') {
-    $usuarioid = $postjson['usuarioid'];
-    
-	$query = $pdo->query("SELECT id, descricao, prioridade FROM objetivos WHERE situacao = 'ABERTO'");
+    // Correção de segurança: buscar objetivos apenas para o usuário logado
+    $query = $pdo->prepare("SELECT id, descricao, prioridade FROM objetivos WHERE situacao = 'ABERTO' AND usuarioid = :usuarioid");
+    $query->bindValue(":usuarioid", $id_usuario_logado);
+    $query->execute();
 
     $res = $query->fetchAll(PDO::FETCH_ASSOC);
     $total = @count($res);
 
-    if (@count($res) <= 0) {
+    if ($total <= 0) {
         $result = json_encode(array('mensagem'=>'Sem dados para exibir!', 'sucesso'=> false));
         echo $result;
         exit();
     }
 
-    if ($total > 0) {
-        for($i=0; $i<$total; $i++){
-            foreach ($res[$i] as $key => $value){}
-
-            $dados[] = array(
-                'id' => $res[$i]['id'],
-                'descricao' => $res[$i]['descricao'],
-				'prioridade' => $res[$i]['prioridade']
-             );
-        }
-
-        $result = json_encode(array('sucesso'=> true, 'objetivos'=>$dados));
-        
-    } else {
-        $result = json_encode(array('sucesso'=> false, 'objetivos'=>'0'));
+    $dados = [];
+    foreach ($res as $item) {
+        $dados[] = array(
+            'id' => $item['id'],
+            'descricao' => $item['descricao'],
+            'prioridade' => $item['prioridade']
+        );
     }
 
+    $result = json_encode(array('sucesso'=> true, 'objetivos'=>$dados));
     echo $result;
     exit();
 }
