@@ -75,23 +75,28 @@ if ($requisicao == 'alterar') {
         exit();
     }
 
+    $params = [':nome' => $nome, ':email' => $email, ':id' => $id_alvo];
+    $sql_senha = '';
+
+    if (!empty($senha)) {
+        $sql_senha = ', senha = :senha';
+        $params[':senha'] = password_hash($senha, PASSWORD_DEFAULT);
+    }
+
     // Se o usuário for ADMIN, ele pode alterar o nível e a situação
     if (trim($nivel_usuario_logado) === 'ADMINISTRADOR') {
         $situacao = $postjson['situacao'];
         $nivel = $postjson['nivel'];
-        $res = $pdo->prepare("UPDATE usuarios SET nome = :nome, email = :email, senha = :senha, nivel = :nivel, situacao = :situacao WHERE id = :id");
-        $res->bindValue(":nivel", $nivel);
-        $res->bindValue(":situacao", $situacao);
+        $sql = "UPDATE usuarios SET nome = :nome, email = :email, nivel = :nivel, situacao = :situacao $sql_senha WHERE id = :id";
+        $params[':nivel'] = $nivel;
+        $params[':situacao'] = $situacao;
     } else {
         // Usuários normais não podem alterar seu próprio nível ou situação
-        $res = $pdo->prepare("UPDATE usuarios SET nome = :nome, email = :email, senha = :senha WHERE id = :id");
+        $sql = "UPDATE usuarios SET nome = :nome, email = :email $sql_senha WHERE id = :id";
     }
     
-    $res->bindValue(":nome", $nome);
-    $res->bindValue(":email", $email);
-    $res->bindValue(":senha", password_hash($senha, PASSWORD_DEFAULT));
-    $res->bindValue(":id", $id_alvo);
-    $res->execute();
+    $res = $pdo->prepare($sql);
+    $res->execute($params);
 
     $mensagem = "Alterado com sucesso!";
 }
@@ -170,6 +175,35 @@ if ($requisicao == 'alterar_senha') {
     $res->execute();
 
     $mensagem = "Sua senha foi alterada com sucesso, faça o login novamente!";
+}
+
+// SOMENTE ADMIN: Alterar a senha de outro usuário
+if ($requisicao == 'admin_alterar_senha') {
+    if (trim($nivel_usuario_logado) !== 'ADMINISTRADOR') {
+        http_response_code(403);
+        echo json_encode(array('mensagem' => 'Acesso negado: somente administradores podem alterar senhas.', 'sucesso' => false));
+        exit();
+    }
+
+    $id_alvo = $postjson['id'];
+    $senha = $postjson['senha'];
+    $senha2 = $postjson['senha2'];
+
+    if (empty($senha) || empty($senha2)) {
+        echo json_encode(array('mensagem' => 'Preencha as senhas!', 'sucesso' => false));
+        exit();
+    }
+    if ($senha != $senha2) {
+        echo json_encode(array('mensagem' => 'As senhas não são iguais!', 'sucesso' => false));
+        exit();
+    }
+
+    $res = $pdo->prepare("UPDATE usuarios SET senha = :senha WHERE id = :id");
+    $res->bindValue(":senha", password_hash($senha, PASSWORD_DEFAULT));
+    $res->bindValue(":id", $id_alvo);
+    $res->execute();
+
+    $mensagem = "Senha alterada com sucesso!";
 }
 
 // SOMENTE ADMIN: Excluir um usuário
