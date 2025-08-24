@@ -182,7 +182,7 @@ if ($requisicao == 'consultar') {
 
 if ($requisicao == 'mass') {
     // Correção de segurança: buscar objetivos apenas para o usuário logado
-    $query = $pdo->prepare("SELECT id, descricao, prioridade FROM objetivos WHERE situacao = 'ABERTO' AND usuarioid = :usuarioid");
+    $query = $pdo->prepare("SELECT id, descricao, prioridade FROM objetivos WHERE situacao = 'ABERTO' AND usuarioid = :usuarioid AND prioridade <= 3");
     $query->bindValue(":usuarioid", $id_usuario_logado);
     $query->execute();
 
