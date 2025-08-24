@@ -26,7 +26,7 @@ if ($requisicao == 'incluir') {
     $query->execute();
     $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
-    if (@count($res) > 0) {
+    if ( @count($res) > 0) {
         $result = json_encode(array('mensagem'=>'Já existe uma tarefa com este nome!', 'sucesso'=> false));
         echo $result;
         exit();
@@ -59,7 +59,7 @@ if ($requisicao == 'alterar') {
     $query->execute();
     $res = $query->fetchAll(PDO::FETCH_ASSOC);
 
-    if (@count($res) > 0) {
+    if ( @count($res) > 0) {
         $result = json_encode(array('mensagem'=>'Já existe uma tarefa com este nome!', 'sucesso'=> false));
         echo $result;
         exit();
@@ -77,6 +77,23 @@ if ($requisicao == 'alterar') {
         $mensagem = "Alterado com sucesso!";
     } else {
         $mensagem = "A tarefa não foi encontrada ou você não tem permissão para alterá-la.";
+    }
+}
+
+if ($requisicao == 'concluir') {
+    $id = $postjson['id'];
+
+    $res = $pdo->prepare("UPDATE tarefas SET situacao = 'FINALIZADA' WHERE id = :id AND usuarioid = :usuarioid AND situacao = 'PENDENTE'");
+    $res->bindValue(":id", $id);
+    $res->bindValue(":usuarioid", $id_usuario_logado);
+    $res->execute();
+
+    if($res->rowCount() > 0){
+        $mensagem = "Tarefa concluída com sucesso!";
+    } else {
+        $result = json_encode(array('mensagem'=>'A tarefa não está pendente ou você não tem permissão para alterá-la.', 'sucesso'=> false));
+        echo $result;
+        exit();
     }
 }
 
