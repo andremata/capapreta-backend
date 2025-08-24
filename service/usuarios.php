@@ -14,7 +14,7 @@ $nivel_usuario_logado = $dados_usuario_token->nivel;
 
 // SOMENTE ADMIN: Incluir um novo usuário
 if ($requisicao == 'incluir') {
-    if ($nivel_usuario_logado !== 'ADMIN') {
+    if (trim($nivel_usuario_logado) !== 'ADMINISTRADOR') {
         http_response_code(403);
         echo json_encode(array('mensagem' => 'Acesso negado: somente administradores podem incluir usuários.', 'sucesso' => false));
         exit();
@@ -59,7 +59,7 @@ if ($requisicao == 'alterar') {
     $senha = $postjson['senha'];
 
     // Um usuário só pode alterar os próprios dados, a menos que seja um admin
-    if ($nivel_usuario_logado !== 'ADMIN' && $id_usuario_logado != $id_alvo) {
+    if (trim($nivel_usuario_logado) !== 'ADMINISTRADOR' && $id_usuario_logado != $id_alvo) {
         http_response_code(403);
         echo json_encode(array('mensagem' => 'Acesso negado: você não pode alterar dados de outro usuário.', 'sucesso' => false));
         exit();
@@ -76,7 +76,7 @@ if ($requisicao == 'alterar') {
     }
 
     // Se o usuário for ADMIN, ele pode alterar o nível e a situação
-    if ($nivel_usuario_logado === 'ADMIN') {
+    if (trim($nivel_usuario_logado) === 'ADMINISTRADOR') {
         $situacao = $postjson['situacao'];
         $nivel = $postjson['nivel'];
         $res = $pdo->prepare("UPDATE usuarios SET nome = :nome, email = :email, senha = :senha, nivel = :nivel, situacao = :situacao WHERE id = :id");
@@ -100,7 +100,7 @@ if ($requisicao == 'alterar') {
 if ($requisicao == 'consulta_por_id') {
     $id_alvo = $postjson['id'];
 
-    if ($nivel_usuario_logado !== 'ADMIN' && $id_usuario_logado != $id_alvo) {
+    if (trim($nivel_usuario_logado) !== 'ADMINISTRADOR' && $id_usuario_logado != $id_alvo) {
         http_response_code(403);
         echo json_encode(array('mensagem' => 'Acesso negado.', 'sucesso' => false));
         exit();
@@ -114,7 +114,7 @@ if ($requisicao == 'consulta_por_id') {
     if (@count($res) > 0) {
         $dados = [
             'id' => $res[0]['id'], 'nome' => $res[0]['nome'], 'email' => $res[0]['email'],
-            'senha' => $res[0]['senha'], 'nivel' => $res[0]['nivel'], 'situacao' => $res[0]['situacao'],
+            'nivel' => $res[0]['nivel'], 'situacao' => $res[0]['situacao'],
         ];
         echo json_encode(array('sucesso' => true, 'user' => $dados));
     } else {
@@ -125,7 +125,7 @@ if ($requisicao == 'consulta_por_id') {
 
 // SOMENTE ADMIN: Listar usuários
 if ($requisicao == 'consultar') {
-    if ($nivel_usuario_logado !== 'ADMIN') {
+    if (trim($nivel_usuario_logado) !== 'ADMINISTRADOR') {
         http_response_code(403);
         echo json_encode(array('mensagem' => 'Acesso negado.', 'sucesso' => false));
         exit();
@@ -135,7 +135,7 @@ if ($requisicao == 'consultar') {
     $start = (int) $postjson['start'];
     $limit = (int) $postjson['limit'];
 
-    $query = $pdo->prepare("SELECT * FROM usuarios WHERE nivel <> 'ADMIN' AND nome LIKE :condicao ORDER BY id DESC LIMIT :start, :limit");
+    $query = $pdo->prepare("SELECT id, nome, email, nivel, situacao FROM usuarios WHERE nivel <> 'ADMINISTRADOR' AND nome LIKE :condicao ORDER BY id DESC LIMIT :start, :limit");
     $query->bindValue(":condicao", $condicao);
     $query->bindValue(":start", $start, PDO::PARAM_INT);
     $query->bindValue(":limit", $limit, PDO::PARAM_INT);
@@ -174,7 +174,7 @@ if ($requisicao == 'alterar_senha') {
 
 // SOMENTE ADMIN: Excluir um usuário
 if ($requisicao == 'excluir') {
-    if ($nivel_usuario_logado !== 'ADMIN') {
+    if (trim($nivel_usuario_logado) !== 'ADMINISTRADOR') {
         http_response_code(403);
         echo json_encode(array('mensagem' => 'Acesso negado.', 'sucesso' => false));
         exit();
